@@ -2,46 +2,88 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Riconoscimento Mano</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
+    <title>Riconoscimento Immagini con Teachable Machine</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 </head>
 <body>
-    <h1>Hand Recognition</h1>
-    <video id="webcam" width="300" height="300" autoplay></video>
-    <p id="result">Aspettando...</p>
+    <h1>Riconoscimento Immagini con Teachable Machine</h1>
+    <button type="button" onclick="init()">Avvia</button>
 
-    <script>
-        const URL = "https://hersh3pp0ton.github.io/JediBot-TeachableMachine-Model/"; // Cambia con il tuo URL!
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
 
-        let model, webcam;
+    <script type="text/javascript">
+        // L'URL del tuo modello Teachable Machine
+        const URL = "https://hersh3pp0ton.github.io/JediBot-TeachableMachine-Model/";
+
+        let model, webcam, labelContainer, maxPredictions;
+        let maxPrediction;  // Variabile globale per memorizzare la predizione con la probabilità più alta
+
+        // Funzione per inizializzare il modello e la webcam
         async function init() {
-            model = await tmImage.load(URL + "model.json", URL + "metadata.json");
-            webcam = document.getElementById("webcam");
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
 
-            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-                webcam.srcObject = stream;
-            });
+            try {
+                // Carica il modello e i metadati
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
 
-            predict();
+                // Configura la webcam
+                const flip = true; // se si vuole ruotare la webcam (true o false)
+                webcam = new tmImage.Webcam(200, 200, flip); // Imposta larghezza e altezza
+                await webcam.setup(); // Richiedi accesso alla webcam
+                await webcam.play(); // Inizia la webcam
+
+                window.requestAnimationFrame(loop);
+
+                // Aggiungi la webcam al DOM
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                labelContainer = document.getElementById("label-container");
+
+                // Aggiungi i contenitori per le etichette di ciascuna classe
+                for (let i = 0; i < maxPredictions; i++) {
+                    labelContainer.appendChild(document.createElement("div"));
+                }
+
+                // Imposta un intervallo per stampare ogni secondo
+                setInterval(() => {
+                    if (maxPrediction) {
+                        console.log("Classe più evidente: " + maxPrediction.className + " con probabilità: " + maxPrediction.probability.toFixed(2));
+                    }
+                }, 1000);  // Stampa ogni secondo
+
+            } catch (error) {
+                console.error("Errore nel caricamento del modello:", error);
+            }
+        }
+
+        async function loop() {
+            webcam.update(); // Aggiorna il frame della webcam
+            await predict(); // Esegui la predizione
+            window.requestAnimationFrame(loop); // Continua il ciclo
         }
 
         async function predict() {
-            const prediction = await model.predict(webcam.video);
-            let maxIndex = prediction.findIndex(p => p.probability === Math.max(...prediction.map(p => p.probability)));
-            let result = prediction[maxIndex].className;
-            
-            document.getElementById("result").innerText = "Riconosciuto: " + result;
-            
-            if (window.AppInventor) {
-                AppInventor.setWebViewString(result);
+            try {
+                const prediction = await model.predict(webcam.canvas);
+
+                maxPrediction = prediction.reduce((prev, current) => 
+                    (prev.probability > current.probability) ? prev : current);
+
+                for (let i = 0; i < maxPredictions; i++) {
+                    const classPrediction = prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+                    labelContainer.childNodes[i].innerHTML = classPrediction;
+
+                    if (window.AppInventor) {
+                        AppInventor.setWebViewString(prediction[i].className);
+                    }
+                }
+            } catch (error) {
+                console.error("Errore durante la predizione:", error);
             }
-
-            setTimeout(predict, 500);
         }
-
-        window.onload = init;
     </script>
 </body>
 </html>
-
