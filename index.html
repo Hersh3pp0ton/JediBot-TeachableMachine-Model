@@ -12,7 +12,7 @@
     <p id="result">Aspettando...</p>
 
     <script>
-        const URL = "https://Hersh3pp0ton.github.io/teachable-machine-model/"; // Cambia con il tuo URL!
+        const URL = "https://hersh3pp0ton.github.io/JediBot-TeachableMachine-Model/"; // Cambia con il tuo URL!
 
         let model, webcam;
         async function init() {
@@ -27,7 +27,7 @@
         }
 
         async function predict() {
-            const prediction = await model.predict(webcam);
+            const prediction = await model.predict(webcam.video);
             let maxIndex = prediction.findIndex(p => p.probability === Math.max(...prediction.map(p => p.probability)));
             let result = prediction[maxIndex].className;
             
@@ -44,3 +44,4 @@
     </script>
 </body>
 </html>
+
